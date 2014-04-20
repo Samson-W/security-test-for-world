@@ -1,0 +1,121 @@
+
+
+To 飞天胖子：
+这里面：
+https://raw.githubusercontent.com/citypw/citypw-SCFE/master/security/sims/README
+
+已经有GCC mitigation中的关于memcpy_foritfy的相关信息，你可以把关于所有mitigation的patch搜集一下，大概是这个列表：
+https://raw.githubusercontent.com/citypw/security-regression-testing-for-suse/master/other/vulns_hardening_assessment.log
+
+Apparmor可以直接使用Debian。
+
+测试平台: OpenSUSE 12.3
+
+Apparmor是和SELinux类似的技术，就是为了防止未知的漏洞比如0day。使用openSUSE和Ubuntu都可以很方便的使用，我使用的是openSUSE
+12.3，用YaST可以直接安装apparmor的相关包，用户需要做的只是加入相关的规则，使用方便是Apparmor最大的优势。
+
+我写了个测试的程序和配置文件，可以到这里下载：
+https://github.com/citypw/citypw-SCFE/tree/master/security/apparmor_test
+
+先编译这个程序
+shawn@linux-sk8j:~> gcc apparmor_test.c
+
+然后为这个程序生成默认规则
+shawn@linux-sk8j:~> sudo /usr/sbin/genprof a.out
+
+We trust you have received the usual lecture from the local System
+Administrator. It usually boils down to these three things:
+
+    #1) Respect the privacy of others.
+    #2) Think before you type.
+    #3) With great power comes great responsibility.
+
+.........................................
+
+
+Finished generating profile for /home/shawn/a.out.
+ -----------------------------------------------------------
+
+Then you can find the profile in t. Add a few of lines into it like this:
+完成后可以在/etc/apparmor.d/home.shawn.a.out找到规则文件，把它改成下面的样子
+
+#include
+
+/home/shawn/a.out {
+#include
+
+   /home/shawn/a.out mr,
+   /home/shawn/hello r,
+   /home/shawn/world w,
+   network stream,
+}
+
+因为apparmor默认使用的是黑名单规则，上面的几行配置意思是说：对/home/shawn/hello有读的权限，对/home/shawn/world有写的权限，可以使用tcp连接。如果不加上"network
+stream"的话在connect()时会阻断，如果这个a.out程序里有个缓冲区漏洞，那这种配置会让攻击者无法去执行shell。详细可以参考：
+http://www.insanitybit.com/tag/apparmor/
+
+除了像apparmor这种在内核态做的加固，在编译器GCC和GNU C库这里也有很多加固可以使用，而且比apparmor还要简单。
+
+
+GCC 加固选项:
+------------------------------------------------
+Stack canary，说白了就是在函数push时搞个4-byte的数在ret
+addr之前，在pop的时候对比这个数是否有改变，如果有改变那就说明有被入侵的可能就直接退出:
+-fstack-protector, 只保护一些函数
+-fstack-protector-all, 保护所有函数，这个消耗性能比较大，不过一个程序问题不大
+
+Example?
+Int fuc_me(int x, int y) /* x? WTH */
+{
+Int v; /* v? */
+char buf[256]];
+Int h;
+............................
+}
+Original layout:
+[High addr...[y].[x].[ret].[frame pointer].[v].[buf].[h]...Low addr]
+Simple Canary layout:
+[High addr...[y].[x].[ret].[frame pointer].[canary].[v].[buf].[h]...Low addr]
+But, it may be looks like this:
+[High addr...[y].[x].[ret].[frame pointer].[carnary].[buf].[h].[v]...Low addr]
+
+
+绕过技术：Scraps of notes on remote stack overflow exploitation in Phrack Issue 67:
+http://www.phrack.org/issues.html?issue=67&id=13&mode=txt
+
+堆(malloc())的异常检测:
+glibc 2.5默认开启，openSUSE 12.3是没问题的
+
+Position-Independent-Executable:
+-pie, 对代码段进行随机化，这个gcc的选项比如打开内核的ASLR支持，
+
+ASLR:
+0代表关闭，1把stack和heap的随机化都在一起做，2代表stack和heap地址随机化分开做
+
+
+绕过技术参考：Bypassing PaX ASLR protection in Phrack Issue 59:
+http://phrack.org/issues.html?issue=59&id=9&mode=txt
+
+ELF格式文件的GOT加固:
+-z relro, Partial RELRO
+-z relro -z now, Full RELRO
+
+绕过参考：The Art Of ELF: Analysis and Exploitations
+http://fluxius.handgrep.se/2011/10/20/the-art-of-elf-analysises-and-exploitations/
+
+字符串格式化漏洞:
+-FORTIFY_SOURCE, 如果我没记错应该是默认开启
+
+绕过技术：A Eulogy for Format Strings in Phrack Issue 67
+http://www.phrack.org/issues.html?issue=67&id=9&mode=txt
+
+不可执行的栈:
+-z nostack
+
+
+更详细的信息可以参考:
+https://github.com/citypw/citypw-SCFE/raw/master/security/slides/osc2013_hardening.pdf
+
+
+
+

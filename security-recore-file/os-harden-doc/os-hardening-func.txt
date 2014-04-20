@@ -1,7 +1,4 @@
 
-
-To 飞天胖子：
-这里面：
 https://raw.githubusercontent.com/citypw/citypw-SCFE/master/security/sims/README
 
 已经有GCC mitigation中的关于memcpy_foritfy的相关信息，你可以把关于所有mitigation的patch搜集一下，大概是这个列表：

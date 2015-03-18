@@ -1,0 +1,130 @@
+对于一个已经生成的gpg密钥对，想对其中的用户名称，注释信息进行修改，那么怎么办呢？
+重新生成密钥？
+修改已经生成的密钥？
+
+重新生成密钥很简单了，但是这会造成多个密钥的选择问题，那么在这里就对已经生成的密钥进行修改的方法作一个介绍。
+
+下面就听慢慢道来：
+
+1、首先，在命令行输入如下命令进入修改密钥信息的界面：
+gpg --edit-key  test@test.com
+
+gpg (GnuPG) 1.4.16; Copyright (C) 2013 Free Software Foundation, Inc.
+This is free software: you are free to change and redistribute it.
+There is NO WARRANTY, to the extent permitted by law.
+
+私钥可用。
+
+pub  4096R/DPPPPPPP  创建于：2015-03-16  有效至：2016-03-15  可用于：SC  
+                     信任度：绝对        有效性：绝对
+sub  4096R/PDDDDDDD  创建于：2015-03-16  有效至：2016-03-15  可用于：E   
+绝对 (1).  yy_test1 (yy_email_gpg) <test@test.com>
+gpg> 
+
+2、使用list可以看到当前用户的 密钥及用户标识(即用户名，注释)：
+gpg> list
+
+pub  4096R/DPPPPPPP  创建于：2015-03-16  有效至：2016-03-15  可用于：SC  
+                     信任度：绝对        有效性：绝对
+sub  4096R/PDDDDDDD  创建于：2015-03-16  有效至：2016-03-15  可用于：E   
+绝对 (1)* yy_test1 (yy_email_gpg) <test@test.com>
+
+3、添加一个用户标识：
+gpg> adduid 
+真实姓名： [yy]yy Ming Xiao
+电子邮件地址： test@test.com
+注释： DSC security
+您选定了这个用户标识：
+    “[yy]yy Ming Xiao (DSC security) <test@test.com>”
+
+更改姓名(N)、注释(C)、电子邮件地址(E)或确定(O)/退出(Q)？ O
+
+您需要输入密码，才能解开这个用户的私钥：“yy_test1 (yy_email_gpg) <test@test.com>”
+4096 位的 RSA 密钥，钥匙号 DPPPPPPP，建立于 2015-03-16
+
+
+pub  4096R/DPPPPPPP  创建于：2015-03-16  有效至：2016-03-15  可用于：SC  
+                     信任度：绝对        有效性：绝对
+sub  4096R/PDDDDDDD  创建于：2015-03-16  有效至：2016-03-15  可用于：E   
+绝对 (1)* yy_test1 (yy_email_gpg) <test@test.com>
+未知 (2). [yy]yy Ming Xiao (DSC security) <test@test.com>
+
+4、删除/注销原来的UID信息：
+要先使用uid 1选中将要删除的标识号，这里我们要删除的标识号为1;
+gpg> uid 1
+
+pub  4096R/DPPPPPPP  创建于：2015-03-16  有效至：2016-03-15  可用于：SC  
+                     信任度：绝对        有效性：绝对
+sub  4096R/PDDDDDDD  创建于：2015-03-16  有效至：2016-03-15  可用于：E   
+绝对 (1)* yy_test1 (yy_email_gpg) <test@test.com>
+未知 (2). [yy]yy Ming Xiao (DSC security) <test@test.com>
+
+这儿又可以分为两种情况，
+1）、对于还没有上传到密钥服务器的密钥进行删除密钥即可。
+2）、对于已经上传到密钥服务器的密钥来说，若不想原来的密钥再进行使用，那么就使用注销命令进行标识的注销。
+
+1）、对于还没有上传到密钥服务器的密钥进行删除密钥即可。
+绝对(1)*标有*的即表示当前被选中的标识，再使用deluid命令删除掉1号标识即可：
+gpg> deluid
+真的要删除这个用户标识吗？(y/N) y
+
+pub  4096R/DPPPPPPP  创建于：2015-03-16  有效至：2016-03-15  可用于：SC  
+                     信任度：绝对        有效性：绝对
+sub  4096R/PDDDDDDD  创建于：2015-03-16  有效至：2016-03-15  可用于：E   
+未知 (1). [yy]yy Ming Xiao (DSC security) <test@test.com>
+
+2）、对于已经上传到密钥服务器的密钥来说，若不想原来的密钥再进行使用，那么就使用注销命令进行标识的注销。
+gpg> revuid
+真的要吊销这个用户标识吗？(y/N) y
+请选择吊销的原因：
+  0 = 未指定原因
+  4 = 用户标识不再有效
+  Q = 取消
+(也许您会想要在这里选择 4)
+您的决定是什么？ 4
+请输入描述(可选)；以空白行结束：
+> 
+吊销原因：用户标识不再有效
+(不给定描述)
+这样可以吗？ (y/N) y
+
+您需要输入密码，才能解开这个用户的私钥：“yy_test1 (yy_email_gpg) <test@test.com>”
+4096 位的 RSA 密钥，钥匙号 DPPPPPPP，建立于 2015-03-16
+
+
+pub  4096R/DPPPPPPP  创建于：2015-03-16  有效至：2016-03-15  可用于：SC  
+                     信任度：绝对        有效性：绝对
+sub  4096R/PDDDDDDD  创建于：2015-03-16  有效至：2016-03-15  可用于：E   
+[已吊销] (1).  yy_test1 (yy_email_gpg) <test@test.com>
+未知 (2). [yy]yy Ming Xiao (DSC security) <test@test.com>
+
+5、设置新生成的标识的信任关系：
+gpg> trust 
+pub  4096R/DPPPPPPP  创建于：2015-03-16  有效至：2016-03-15  可用于：SC  
+                     信任度：绝对        有效性：绝对
+sub  4096R/PDDDDDDD  创建于：2015-03-16  有效至：2016-03-15  可用于：E   
+未知 (1). [yy]yy Ming Xiao (DSC security) <test@test.com>
+
+您是否相信这位用户有能力验证其他用户密钥的有效性(查对身份证、通过不同的渠道检查
+指纹等)？
+
+  1 = 我不知道或我不作答
+  2 = 我不相信
+  3 = 我勉强相信
+  4 = 我完全相信
+  5 = 我绝对相信
+  m = 回到主菜单
+
+您的决定是什么？ 5
+您真的要把这把密钥设成绝对信任？(y/N) y
+
+设置完成后，前面的“未知 (1).”将变为“绝对 (1).”，这一般要先进行save操作后再次进行list可查看到。
+
+6、针对修改进行保存，使用save命令即可。
+gpg> save
+
+
+
+
+
+

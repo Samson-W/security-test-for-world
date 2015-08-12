@@ -1,3 +1,8 @@
 security-test-for-world
 =======================
-This repositories include Some documents、script、test programs for security.
+document_about_security:
+	This repositories include Some documents、script、test programs for security.
+
+checksecurity:
+	This dir include some shell secript for system security check.
+

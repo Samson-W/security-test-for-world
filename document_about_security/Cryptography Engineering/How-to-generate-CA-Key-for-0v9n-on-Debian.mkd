@@ -1,0 +1,121 @@
+#  Debian下生成CA证书及key的方法
+
+## 下载openvpn制作证书与私钥的easy-rsa工具箱： 
+sudo apt-get install easy-rsa 
+
+##  进行安装的easy-rsa工具箱目录： 
+cd /usr/share/easy-rsa/ 
+
+## 修改环境变量配置文件   
+对当前目录下的vars进行修改，此文件中主要是对生成的key的长度（默认为2048bit，对应
+的字段为： KEY_SIZE）、证书的有效天数(默认为3650天后失效，对应的字段为：CA_EXPIRE)、
+key的有效天数（默认为3650天后失效，对应的字段为：KEY_SIZE），若对于有效期限有限制及
+生成的key的长度有要求的话，对以上三个字段进行设置即可，还需要对以下几个字段进行修改，
+针对我司的情况可配置为如下：  
+
+    export KEY_COUNTRY="CN" 
+    export KEY_PROVINCE="Beijing" 
+    export KEY_CITY="Beijing" 
+    export KEY_ORG="CipherGateway" 
+    export KEY_EMAIL="admin@ciphergateway.com" 
+    export KEY_OU="CipherGateway" 
+
+在命令行内执行 source ./vars  使vars文件中设置的环境变量生效。 
+
+* 注意，以下使用此工具箱中的命令生成的CA证书及KEY都默认生成在cd /usr/share/easy-rsa/keys
+* 目录下，命令的执行都是在/usr/share/easy-rsa/目录下。  
+
+## 生成CA根证书  
+命令: 
+
+    sudo build-ca 
+进行CA根证书的生成，在生成阶段的交互中Common Name的值可以自定义，其它的使用在
+vars文件中配置的变量值即可。 
+
+## 生成服务器端的证书和key:  
+在命令行使用命令： 
+
+    sudo ./build-key-server server   
+
+## 生成客户端的证书及key: 
+
+*  注意：在生成客户端的证书及key的时候，交互中的Common Name输入的名称是要相互间独一无二的，不能一样； 
+以下命令为生成三个客户端的证书及私钥：
+    
+    sudo ./build-key client1 
+    sudo ./build-key client2 
+    sudo ./build-key client3 
+
+
+##  生成Diffie Hellman parameters：  
+    
+    sudo ./build-dh  
+
+##  生成的文件名称、在哪儿被需要、目的、是否私密   
+*  注意： 为私密的文件要注意权限的设置，保证对此文件的访问权限做到最小，在现有场
+景中： 只是对当前要使用这些Key的用户给予读写的权限，使用命令： 
+
+    chmod 600 keyfile  
+    
+![openvpn](img/keyfile.png)  
+
+##  如何使某客户端证书作废
+如：要让client2作废，使用命令： 
+
+    sudo ./revoke-full client2 
+
+在目录keys下会生成一个CRL (certificate revocation list) 文件crl.pem，这只是对客户端
+名为client2的证书对应的吊销证书凭证。为了更好的区分和管理，可以使用命令mv crl.pem client2.pem
+将此文件改名。若想将名为client2的客户端证书失效的话，在服务器端的配置中加入下面这句：
+    
+    crl-verify crl.pem
+
+即可使其生效。
+
+对于多个废弃的客户端证书在生成后进行改名并在配置文件中设置对应的文件即可。
+
+
+## 附加说明：
+在生成根证书、二级服务器端的证书、二级服务端的证书的过程中，以上的步骤是使用的工具包
+easy_rsa工具包来进行的，那么以上的几步对应的Openssl的纯命令又是怎么样的呢？如下列出以
+上命令对应的Openssl的命令行：
+
+生成根证书，其中ca.crt为生成的二级客户端证书，千万不要忘记将ca.key的权限设置为
+当前使用客户端证书及私钥的用户的权限：
+
+    openssl req -days 3650 -nodes -new -newkey rsa:2048 -x509 -keyout ca.key -out ca.crt -config /usr/share/easy-rsa/openssl-1.0.0.cnf
+    chmod 0600 ca.key
+
+生成二级服务器端的证书及私钥，其中server.crt为生成的二级客户端证书，千万不要忘记将
+server.key的权限设置为当前使用客户端证书及私钥的用户的权限：
+    
+    openssl req -nodes -new -newkey rsa:2048 -keyout server.key -out server.csr -extensions server -config /usr/share/easy-rsa/openssl-1.0.0.cnf
+    openssl ca -days 3650 -out server.crt -in server.csr -extensions server -config /usr/share/easy-rsa/openssl-1.0.0.cnf
+    chmod 0600 server.key
+
+生成二级客户端的证书主私钥，其中client.crt为生成的二级客户端证书，千万不要忘记将
+client.key的权限设置为当前使用客户端证书及私钥的用户的权限：
+
+    openssl req -nodes -new -newkey rsa:2048 -keyout client.key -out client.csr -config /usr/share/easy-rsa/openssl-1.0.0.cnf
+    openssl ca -days 3650 -out client.crt -in client.csr -config /usr/share/easy-rsa/openssl-1.0.0.cnf
+    chmod 0600 client.key
+    
+不是说要使用根证书对二级证书进行签名的么，但是后面生成二级证书时并没有ca.crt文件
+及ca.key的引用呀，那是如何使用根证书进行签名的呢？
+其实在/usr/share/easy-rsa/openssl-1.0.0.cnf文件中是有配置信息的，CA根证书的配置如下：
+
+    [ CA_default ]
+
+    dir             = $ENV::KEY_DIR         # Where everything is kept
+    certs           = $dir                  # Where the issued certs are kept
+    crl_dir         = $dir                  # Where the issued crl are kept
+    database        = $dir/index.txt        # database index file.
+    new_certs_dir   = $dir                  # default place for new certs.
+
+    certificate     = $dir/ca.crt           # The CA certificate
+    serial          = $dir/serial           # The current serial number
+    crl             = $dir/crl.pem          # The current CRL
+    private_key     = $dir/ca.key           # The private key
+    RANDFILE        = $dir/.rand            # private random number file
+
+    x509_extensions = usr_cert              # The extentions to add to the cert

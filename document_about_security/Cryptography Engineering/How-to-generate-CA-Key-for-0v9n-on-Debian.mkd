@@ -68,7 +68,7 @@ vars文件中配置的变量值即可。
 名为client2的证书对应的吊销证书凭证。为了更好的区分和管理，可以使用命令mv crl.pem client2.pem
 将此文件改名。若想将名为client2的客户端证书失效的话，在服务器端的配置中加入下面这句：
     
-    crl-verify crl.pem
+    crl-verify  client2.pem
 
 即可使其生效。
 
